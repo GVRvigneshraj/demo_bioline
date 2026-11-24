@@ -42,6 +42,7 @@ demo_bioline/
   - Light green `#1a8856`
   - Orange accent `#FF6B2C`
 - **Style:** Glassmorphism — `backdrop-filter: blur(24px) saturate(180%)`, translucent white borders, soft shadows, animated gradient blobs + noise texture background
+- **Mobile performance:** Trust cards use native page scrolling on small screens; below-the-fold images load lazily, and the hero video is deferred to desktop devices that allow motion
 - **Footer watermark:** Full-width "BIOLINE" SVG wordmark after the footer, low-opacity white fade (12% → 2%), bottom 1/4 of letters clipped at the screen edge (`textLength` guarantees edge-to-edge cover on all screen sizes)
 
 ## Image Asset Plan
