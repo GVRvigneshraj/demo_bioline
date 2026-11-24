@@ -1173,26 +1173,37 @@
             }, 180);
         }
 
-        function stepStackScroll(direction, event) {
+        function canStepStackScroll(direction) {
             var section = document.getElementById('stackSection');
             var home = document.getElementById('page-home');
             if (!section || !home || !home.classList.contains('active')) return false;
             var rect = section.getBoundingClientRect();
             var viewportHeight = window.innerHeight;
             if (rect.top > 1 || rect.bottom < viewportHeight - 1) return false;
-            if (stackSnapLocked) {
-                if (event) event.preventDefault();
-                if (stackSnapSettled) scheduleStackSnapUnlock();
-                return true;
-            }
             var slots = section.querySelectorAll('.stack-card-slot');
             var scrollable = section.offsetHeight - viewportHeight;
             if (slots.length < 2 || scrollable <= 0) return false;
             var progress = Math.max(0, Math.min(1, -rect.top / scrollable));
             var currentIndex = Math.round(progress * (slots.length - 1));
             var nextIndex = Math.max(0, Math.min(slots.length - 1, currentIndex + direction));
-            if (nextIndex === currentIndex) return false;
+            return stackSnapLocked || nextIndex !== currentIndex;
+        }
+
+        function stepStackScroll(direction, event) {
+            if (!canStepStackScroll(direction)) return false;
             if (event) event.preventDefault();
+            if (stackSnapLocked) {
+                if (stackSnapSettled) scheduleStackSnapUnlock();
+                return true;
+            }
+            var section = document.getElementById('stackSection');
+            var rect = section.getBoundingClientRect();
+            var viewportHeight = window.innerHeight;
+            var slots = section.querySelectorAll('.stack-card-slot');
+            var scrollable = section.offsetHeight - viewportHeight;
+            var progress = Math.max(0, Math.min(1, -rect.top / scrollable));
+            var currentIndex = Math.round(progress * (slots.length - 1));
+            var nextIndex = Math.max(0, Math.min(slots.length - 1, currentIndex + direction));
 
             var sectionTop = rect.top + window.scrollY;
             var target = sectionTop + scrollable * nextIndex / (slots.length - 1);
@@ -1231,6 +1242,26 @@
             var direction = ['ArrowDown', 'PageDown', ' '].indexOf(event.key) !== -1 ? 1 : ['ArrowUp', 'PageUp'].indexOf(event.key) !== -1 ? -1 : 0;
             if (direction) stepStackScroll(direction, event);
         });
+        var stackTouchStart = null;
+        window.addEventListener('touchstart', function(event) {
+            if (event.touches.length !== 1) { stackTouchStart = null; return; }
+            stackTouchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+        }, { passive: true });
+        window.addEventListener('touchmove', function(event) {
+            if (!stackTouchStart || event.touches.length !== 1) return;
+            var deltaX = stackTouchStart.x - event.touches[0].clientX;
+            var deltaY = stackTouchStart.y - event.touches[0].clientY;
+            if (Math.abs(deltaY) < 12 || Math.abs(deltaX) > Math.abs(deltaY)) return;
+            if (canStepStackScroll(deltaY > 0 ? 1 : -1)) event.preventDefault();
+        }, { passive: false });
+        window.addEventListener('touchend', function(event) {
+            if (!stackTouchStart || !event.changedTouches.length) return;
+            var deltaX = stackTouchStart.x - event.changedTouches[0].clientX;
+            var deltaY = stackTouchStart.y - event.changedTouches[0].clientY;
+            stackTouchStart = null;
+            if (Math.abs(deltaY) >= 35 && Math.abs(deltaY) > Math.abs(deltaX)) stepStackScroll(deltaY > 0 ? 1 : -1);
+        }, { passive: true });
+        window.addEventListener('touchcancel', function() { stackTouchStart = null; }, { passive: true });
 
         function filterAmazon() { var cards = document.querySelectorAll('#pkgGrid .package-card'); var cats = Array.from(document.querySelectorAll('.amz-cat:checked')).map(function(c) { return c.value; }); var priceEl = document.querySelector('.amz-price:checked'); var price = priceEl ? priceEl.value : ''; var ageEl = document.querySelector('.amz-age:checked'); var age = ageEl ? ageEl.value : ''; var sortEl = document.querySelector('.amz-sort:checked'); var sort = sortEl ? sortEl.value : 'popular'; var visible = []; cards.forEach(function(card) { var cat = card.getAttribute('data-category'); var cardPrice = parseInt(card.getAttribute('data-price')); var cardAge = card.getAttribute('data-age'); var match = true; if (cats.length > 0 && cats.indexOf(cat) === -1) match = false; if (price) { var parts = price.split('-'); if (cardPrice < parseInt(parts[0]) || cardPrice > parseInt(parts[1])) match = false; } if (age && cardAge !== age) { if (age !== 'all' || cardAge !== 'all') { if (cardAge !== age && cardAge !== 'all') match = false; } } if (match) { card.classList.remove('hidden'); visible.push(card); } else { card.classList.add('hidden'); } }); var grid = document.getElementById('pkgGrid'); visible.sort(function(a, b) { var pa = parseInt(a.getAttribute('data-price')); var pb = parseInt(b.getAttribute('data-price')); if (sort === 'low') return pa - pb; if (sort === 'high') return pb - pa; if (sort === 'discount') { var oa = parseInt(a.querySelector('.price-original') ? a.querySelector('.price-original').textContent.replace(/[^\d]/g, '') : pa); var ob = parseInt(b.querySelector('.price-original') ? b.querySelector('.price-original').textContent.replace(/[^\d]/g, '') : pb); return (ob - pb) - (oa - pa); } return 0; }); visible.forEach(function(card) { grid.appendChild(card); }); var countEl = document.getElementById('amzCount'); if (countEl) countEl.textContent = visible.length; var noResults = document.getElementById('noResults'); if (noResults) noResults.style.display = visible.length === 0 ? 'block' : 'none'; }
         function clearAmazonFilters() { document.querySelectorAll('.amz-cat').forEach(function(c) { c.checked = false; }); document.querySelectorAll('.amz-price').forEach(function(r) { r.checked = (r.value === ''); }); document.querySelectorAll('.amz-age').forEach(function(r) { r.checked = (r.value === ''); }); document.querySelectorAll('.amz-sort').forEach(function(r) { r.checked = (r.value === 'popular'); }); filterAmazon(); }
