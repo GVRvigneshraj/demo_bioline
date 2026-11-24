@@ -746,7 +746,7 @@
 
         <div class="page active" id="page-home">
             <div class="hero-section">
-                <div class="hero-video-bg"><video id="heroVideo" muted loop playsinline preload="none" poster="assets/hero-lab.png" aria-hidden="true" tabindex="-1"><source data-src="assets/Designing_lab_like_bioline_c57b28e7.mp4" type="video/mp4"></video></div>
+                <div class="hero-video-bg"><video id="heroVideo" autoplay muted loop playsinline preload="none" poster="assets/hero-lab.png" aria-hidden="true" tabindex="-1"><source data-src="assets/Designing_lab_like_bioline_c57b28e7.mp4" type="video/mp4"></video></div>
                 <div class="hero-blend-base"></div>
                 <div class="hero-content">
                     <div class="hero-left">
@@ -831,7 +831,7 @@
         function playHeroVideo() {
             var heroVideo = document.getElementById('heroVideo');
             if (!heroVideo) return;
-            if (!window.matchMedia || !window.matchMedia('(min-width: 901px) and (prefers-reduced-motion: no-preference)').matches) {
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 heroVideo.pause();
                 return;
             }
@@ -840,7 +840,9 @@
                 source.setAttribute('src', source.dataset.src);
                 heroVideo.load();
             }
-            heroVideo.play().catch(function() {});
+            heroVideo.play().catch(function(error) {
+                if (error.name !== 'AbortError') console.warn('Hero video could not autoplay:', error);
+            });
         }
 
         var THEMES = {
@@ -1312,8 +1314,8 @@
 
         function initHowItWorksAuto() { var steps = document.querySelectorAll('.process-step'); if (steps.length === 0) return; var triggered = false; steps.forEach(function(s) { s.classList.remove('auto-visible'); }); triggered = false; function checkVisibility() { if (triggered) return; var grid = document.getElementById('processGrid'); if (!grid) return; var rect = grid.getBoundingClientRect(); if (rect.top < window.innerHeight * 0.75) { triggered = true; steps.forEach(function(step, i) { setTimeout(function() { step.classList.add('auto-visible'); }, i * 600); }); } } window.addEventListener('scroll', checkVisibility, { passive: true }); checkVisibility(); }
 
-        window.addEventListener('load', function() { triggerReveals(); animateBars(); playHeroVideo(); });
-        initBranchNetwork(); initRevealObserver(); triggerReveals(); animateStatCounters(); animateBars(); initStackScroll();
+        window.addEventListener('load', function() { triggerReveals(); animateBars(); });
+        initBranchNetwork(); initRevealObserver(); triggerReveals(); animateStatCounters(); animateBars(); initStackScroll(); playHeroVideo();
     </script>
 </body>
 </html>
